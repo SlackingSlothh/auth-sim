@@ -1,0 +1,47 @@
+services:
+  db_primary:
+    image: postgres:16
+    container_name: postgres_primary
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_PRIMARY_USER}
+      POSTGRES_PASSWORD: ${DB_PRIMARY_PASS}
+      POSTGRES_DB: ${DB_PRIMARY_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_primary:/var/lib/postgresql/data
+      - ./db/primary.sql:/docker-entrypoint-initdb.d/init.sql
+
+  db_local_a:
+    image: postgres:16
+    container_name: postgres_local_a
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_LOCAL_A_USER}
+      POSTGRES_PASSWORD: ${DB_LOCAL_A_PASS}
+      POSTGRES_DB: ${DB_LOCAL_A_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_local_a:/var/lib/postgresql/data
+      - ./db/local.sql:/docker-entrypoint-initdb.d/init.sql
+
+  db_local_b:
+    image: postgres:16
+    container_name: postgres_local_b
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_LOCAL_B_USER}
+      POSTGRES_PASSWORD: ${DB_LOCAL_B_PASS}
+      POSTGRES_DB: ${DB_LOCAL_B_NAME}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data_local_b:/var/lib/postgresql/data
+      - ./db/local.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  postgres_data_primary:
+  postgres_data_local_a:
+  postgres_data_local_b:

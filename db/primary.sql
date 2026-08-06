@@ -1,16 +1,11 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-CREATE TYPE user_status AS ENUM ('active', 'inactive');
-CREATE TYPE app_status AS ENUM ('active', 'inactive');
-CREATE TYPE session_status AS ENUM ('active', 'expired', 'revoked');
-CREATE TYPE token_status AS ENUM ('active', 'expired', 'revoked');
-CREATE TYPE effect_enum AS ENUM ('allow', 'deny');
 
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name VARCHAR NOT NULL,
     email VARCHAR UNIQUE NOT NULL,
     password_hash VARCHAR NOT NULL,
-    status user_status NOT NULL,
+    status VARCHAR NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
@@ -36,7 +31,7 @@ CREATE TABLE IF NOT EXISTS applications (
     name VARCHAR NOT NULL,
     client_id VARCHAR UNIQUE NOT NULL,
     client_secret_hash VARCHAR,
-    status app_status NOT NULL,
+    status VARCHAR NOT NULL,
     launch_url TEXT,
     logout_notification_url TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -54,7 +49,7 @@ CREATE TABLE IF NOT EXISTS application_group_policies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     application_id VARCHAR NOT NULL REFERENCES applications(client_id),
     group_id UUID NOT NULL REFERENCES groups(id),
-    effect effect_enum NOT NULL,
+    effect VARCHAR NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     CONSTRAINT unique_app_group UNIQUE (application_id, group_id,  effect)
 );
@@ -63,7 +58,7 @@ CREATE TABLE IF NOT EXISTS sso_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
     session_token_hash VARCHAR NOT NULL,
-    status session_status NOT NULL,
+    status VARCHAR NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     expires_at TIMESTAMPTZ DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days') NOT NULL,
     last_activity_at TIMESTAMPTZ,
@@ -80,7 +75,7 @@ CREATE TABLE IF NOT EXISTS authorization_codes (
     application_id VARCHAR NOT NULL REFERENCES applications(client_id),
     sso_session_id UUID NOT NULL REFERENCES sso_sessions(id),
     redirect_uri TEXT NOT NULL,
-    status session_status NOT NULL,
+    status VARCHAR NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     expires_at TIMESTAMPTZ DEFAULT (CURRENT_TIMESTAMP + INTERVAL '5 minutes') NOT NULL,
     used_at TIMESTAMPTZ
@@ -93,7 +88,7 @@ CREATE TABLE IF NOT EXISTS access_tokens (
     application_id VARCHAR NOT NULL REFERENCES applications(client_id),
     sso_session_id UUID NOT NULL REFERENCES sso_sessions(id),
     scopes JSONB,
-    status token_status NOT NULL,
+    status VARCHAR NOT NULL,
     issued_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
     expires_at TIMESTAMPTZ DEFAULT (CURRENT_TIMESTAMP + INTERVAL '14 days') NOT NULL,
     revoked_at TIMESTAMPTZ

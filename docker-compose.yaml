@@ -4,14 +4,34 @@ services:
     container_name: postgres_primary
     restart: always
     environment:
-      POSTGRES_USER: ${DB_PRIMARY_USER}
-      POSTGRES_PASSWORD: ${DB_PRIMARY_PASS}
-      POSTGRES_DB: ${DB_PRIMARY_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data_primary:/var/lib/postgresql/data
-      - ./db/primary.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 2s
+      retries: 10
+
+  migrate_primary:
+    image: migrate/migrate
+    depends_on:
+      db_primary:
+        condition: service_healthy
+    volumes:
+      - ./auth-provider/server/migrations:/migrations
+    command:
+      [
+        "-path",
+        "/migrations",
+        "-database",
+        "postgres://${DB_USER}:${DB_PASSWORD}@db_primary:5432/${DB_NAME}?sslmode=disable",
+        "up",
+      ]
+    restart: "no"
 
   db_local_a:
     image: postgres:16
@@ -25,7 +45,6 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data_local_a:/var/lib/postgresql/data
-      - ./db/local.sql:/docker-entrypoint-initdb.d/init.sql
 
   db_local_b:
     image: postgres:16
@@ -39,7 +58,6 @@ services:
       - "5434:5432"
     volumes:
       - postgres_data_local_b:/var/lib/postgresql/data
-      - ./db/local.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   postgres_data_primary:

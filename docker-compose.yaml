@@ -3,44 +3,79 @@ services:
     image: postgres:16
     container_name: postgres_primary
     restart: always
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
+    env_file:
+      - ./auth-provider/server/.env
     ports:
       - "5432:5432"
     volumes:
       - postgres_data_primary:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ["CMD-SHELL", "pg_isready -U $$DB_USER -d $$DB_NAME"]
       interval: 2s
       retries: 10
 
   migrate_primary:
     image: migrate/migrate
+    env_file:
+      - ./auth-provider/server/.env
     depends_on:
       db_primary:
         condition: service_healthy
     volumes:
       - ./auth-provider/server/migrations:/migrations
-    command:
-      [
-        "-path",
-        "/migrations",
-        "-database",
-        "postgres://${DB_USER}:${DB_PASSWORD}@db_primary:5432/${DB_NAME}?sslmode=disable",
-        "up",
-      ]
+      - ./auth-provider/server/scripts/run-migrations.sh:/run-migrations.sh:ro
+    entrypoint:
+      - sh
+      - /run-migrations.sh
     restart: "no"
+
+  seed_primary:
+    env_file:
+      - ./auth-provider/server/.env
+    build:
+      context: .
+      dockerfile: auth-provider/server/Dockerfile
+    container_name: seed_primary
+    depends_on:
+      migrate_primary:
+        condition: service_completed_successfully
+    command: ["./seed"]
+    restart: "no"
+
+  auth_backend:
+    env_file:
+      - ./auth-provider/server/.env
+    build:
+      context: .
+      dockerfile: auth-provider/server/Dockerfile
+    container_name: auth_backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      migrate_primary:
+        condition: service_completed_successfully
+
+  control_panel_fe:
+    build:
+      context: .
+      dockerfile: auth-provider/control-panel/Dockerfile
+    container_name: control_panel_fe
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./auth-provider/control-panel:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    command: ["sh", "-c", "npm run dev -- --host 0.0.0.0"]
+    restart: unless-stopped
 
   db_local_a:
     image: postgres:16
     container_name: postgres_local_a
     restart: always
-    environment:
-      POSTGRES_USER: ${DB_LOCAL_A_USER}
-      POSTGRES_PASSWORD: ${DB_LOCAL_A_PASS}
-      POSTGRES_DB: ${DB_LOCAL_A_NAME}
+    env_file:
+      - ./applications/app-a/backend/.env
     ports:
       - "5433:5432"
     volumes:
@@ -50,10 +85,8 @@ services:
     image: postgres:16
     container_name: postgres_local_b
     restart: always
-    environment:
-      POSTGRES_USER: ${DB_LOCAL_B_USER}
-      POSTGRES_PASSWORD: ${DB_LOCAL_B_PASS}
-      POSTGRES_DB: ${DB_LOCAL_B_NAME}
+    env_file:
+      - ./applications/app-b/backend/.env
     ports:
       - "5434:5432"
     volumes:

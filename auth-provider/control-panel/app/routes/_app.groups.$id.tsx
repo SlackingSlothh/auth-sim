@@ -151,7 +151,7 @@ export default function GroupEdit() {
 
       <div className="flex flex-col flex-1 gap-4">
         <h2 className="text-xl">Group Members</h2>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col flex-1 overflow-y-auto">
           {users.map((u) => (
             <Link to={`/users/${u.ID}`} className="py-1">
               {u.Name} ({u.Email})
@@ -196,7 +196,7 @@ export default function GroupEdit() {
         <h2 className="text-xl">Allowed Apps</h2>
         <div className="flex-1 overflow-y-auto">
           {apps.map((u) => (
-            <Link to={`/users/${u.ID}`} className="flex py-1">
+            <Link to={`/apps/${u.ID}`} className="flex py-1">
               <span
                 className={`h-3 w-3 rounded-full bg-${u.Status !== "active" ? "red" : "green"}-500`}
               ></span>
@@ -352,7 +352,7 @@ export default function GroupEdit() {
                   if (!id || addSelected.length === 0) return;
                   setAddSaving(true);
                   try {
-                    const res = await apiFetch(`/group/${id}/members`, {
+                    const res = await apiFetch(`/groups/${id}/members`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(addSelected),
@@ -487,7 +487,7 @@ export default function GroupEdit() {
                   if (!id || addAppSelected.length === 0) return;
                   setAddAppSaving(true);
                   try {
-                    const res = await apiFetch(`/group/${id}/allowed-apps`, {
+                    const res = await apiFetch(`/groups/${id}/allowed-apps`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify(addAppSelected),

@@ -81,12 +81,12 @@ func (ApplicationRedirectURI) TableName() string {
 
 type ApplicationGroupPolicy struct {
 	ID            datatypes.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	ApplicationID string         `gorm:"type:varchar(255);not null;index:idx_app_group_policy_unique,unique"`
+	ApplicationID datatypes.UUID `gorm:"type:uuid;not null;index:idx_app_group_policy_unique,unique"`
 	GroupID       datatypes.UUID `gorm:"type:uuid;not null;index:idx_app_group_policy_unique,unique"`
 	Effect        string         `gorm:"type:varchar(20);not null"`
 	CreatedAt     time.Time      `gorm:"type:timestamptz;autoCreateTime;not null"`
 
-	Application Application `gorm:"foreignKey:ApplicationID;references:ClientID"`
+	Application Application `gorm:"foreignKey:ApplicationID;references:ID"`
 	Group       Group       `gorm:"foreignKey:GroupID;references:ID"`
 }
 

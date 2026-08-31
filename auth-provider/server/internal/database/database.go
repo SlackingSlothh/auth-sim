@@ -253,7 +253,7 @@ func SelectApp(id datatypes.UUID) (transport.AppDetail, error) {
 	result = db.Table("groups").
 		Select("groups.id AS id, groups.name AS name").
 		Joins("JOIN application_group_policies ON application_group_policies.group_id = groups.id").
-		Where("application_group_policies.application_id = ?", app.ClientID).
+		Where("application_group_policies.application_id = ?", app.ID).
 		Order("groups.name ASC").
 		Scan(&detail.AllowedGroups)
 	if result.Error != nil {
@@ -309,13 +309,13 @@ func AppendAppGroups(appID datatypes.UUID, groupIDs []datatypes.UUID) ([]datatyp
 	records := make([]models.ApplicationGroupPolicy, 0, len(groupIDs))
 	for _, groupID := range groupIDs {
 		records = append(records, models.ApplicationGroupPolicy{
-			ApplicationID: app.ClientID,
+			ApplicationID: app.ID,
 			GroupID:       groupID,
 			Effect:        "allow",
 		})
 	}
 
-	err := db.Table("application_group_policies").
+	err := db.Model(&models.ApplicationGroupPolicy{}).
 		Clauses(
 			clause.OnConflict{
 				Columns:   []clause.Column{{Name: "application_id"}, {Name: "group_id"}, {Name: "effect"}},
@@ -352,7 +352,7 @@ func RemoveAppGroups(appID datatypes.UUID, groupIDs []datatypes.UUID) ([]datatyp
 	}
 
 	err := db.Model(&models.ApplicationGroupPolicy{}).
-		Where("application_id = ? AND group_id IN ? AND effect = ?", app.ClientID, groupIDs, "allow").
+		Where("application_id = ? AND group_id IN ? AND effect = ?", app.ID, groupIDs, "allow").
 		Delete(&models.ApplicationGroupPolicy{}).Error
 
 	if err != nil {
@@ -571,7 +571,7 @@ func GetDeniedApps(groupID datatypes.UUID) ([]transport.DeniedApps, error) {
 	var apps []transport.DeniedApps
 	result = db.Table("applications").
 		Select("applications.id AS id, applications.name AS name").
-		Joins("LEFT JOIN application_group_policies ON application_group_policies.applications_id = applications.id AND application_group_policies.group_id = ?", groupID).
+		Joins("LEFT JOIN application_group_policies ON application_group_policies.application_id = applications.id AND application_group_policies.group_id = ?", groupID).
 		Where("application_group_policies.group_id IS NULL").
 		Order("applications.name ASC").
 		Scan(&apps)
@@ -627,6 +627,18 @@ func RemoveGroupMembers(groupID datatypes.UUID, userIDs []datatypes.UUID) ([]dat
 	return nil, models.ErrInternal
 }
 
+func buildApplicationGroupPolicyRecords(groupID datatypes.UUID, appIDs []datatypes.UUID) []models.ApplicationGroupPolicy {
+	records := make([]models.ApplicationGroupPolicy, 0, len(appIDs))
+	for _, appID := range appIDs {
+		records = append(records, models.ApplicationGroupPolicy{
+			ApplicationID: appID,
+			GroupID:       groupID,
+			Effect:        "allow",
+		})
+	}
+	return records
+}
+
 func AppendAllowedApps(groupID datatypes.UUID, appIDs []datatypes.UUID) ([]datatypes.UUID, error) {
 	db := config.GetDB()
 
@@ -634,18 +646,12 @@ func AppendAllowedApps(groupID datatypes.UUID, appIDs []datatypes.UUID) ([]datat
 		return []datatypes.UUID{}, nil
 	}
 
-	records := make([]models.ApplicationGroupPolicy, 0, len(appIDs))
-	for _, appID := range appIDs {
-		records = append(records, models.ApplicationGroupPolicy{
-			ApplicationID: appID.String(),
-			GroupID:       groupID,
-		})
-	}
+	records := buildApplicationGroupPolicyRecords(groupID, appIDs)
 
-	err := db.Table("application_group_policy").
+	err := db.Table(models.ApplicationGroupPolicy{}.TableName()).
 		Clauses(
 			clause.OnConflict{
-				Columns:   []clause.Column{{Name: "application_id"}, {Name: "group_id"}},
+				Columns:   []clause.Column{{Name: "application_id"}, {Name: "group_id"}, {Name: "effect"}},
 				DoNothing: true,
 			},
 		).

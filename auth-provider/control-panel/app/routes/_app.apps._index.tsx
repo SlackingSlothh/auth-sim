@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router";
 import Table from "../components/table";
 import type { Column } from "../components/table";
 import { apiJson } from "../utils/api";
+import { ExclamationCircleIcon } from "@heroicons/react/24/outline";
 
 type App = {
   id: string | number;
@@ -20,6 +22,9 @@ export default function AppsRoute() {
   const [launchUrl, setLaunchUrl] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [responseAppID, setResponseAppID] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
+  const [showSecret, setShowSecret] = useState(false);
 
   const mountedRef = useRef(true);
 
@@ -54,6 +59,19 @@ export default function AppsRoute() {
     { key: "name", header: "Name" },
     { key: "clientId", header: "Client ID" },
     { key: "status", header: "Status" },
+    {
+      key: "id",
+      header: "",
+      render: (_v, row) => (
+        <Link
+          to={`/apps/${row.id}`}
+          className="inline-block px-2 py-1 bg-blue-500 text-white rounded"
+        >
+          Edit
+        </Link>
+      ),
+      width: 120,
+    },
   ];
 
   const resetForm = () => {
@@ -93,6 +111,8 @@ export default function AppsRoute() {
         setFormError(`Create failed: ${msg}`);
       } else {
         closeNew();
+        setResponseAppID(resp.clientId);
+        setClientSecret(resp.clientSecret);
         await fetchApps();
       }
     } catch (err) {
@@ -169,6 +189,51 @@ export default function AppsRoute() {
                 {submitting ? "Creating..." : "Create"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {showSecret && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div
+            className="absolute inset-0 bg-black opacity-40"
+            onClick={() => setShowSecret(false)}
+          />
+          <div className="relative bg-white rounded shadow-lg p-6 w-full max-w-md z-10">
+            <h2 className="text-xl mb-4">App Created Successfully!</h2>
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col">
+                <span className="text-sm">Client ID</span>
+                <input
+                  value={responseAppID}
+                  disabled={true}
+                  className="border p-2"
+                />
+              </label>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="flex flex-col">
+                <span className="text-sm">Client Secret</span>
+                <input
+                  value={clientSecret}
+                  disabled={true}
+                  className="border p-2"
+                />
+              </label>
+            </div>
+            <div className="w-full bg-yellow-500 flex mt-4">
+              <ExclamationCircleIcon className="w-4" />
+              <span className="flex-1">
+                Warning: we only show you client secret once. Make sure to copy
+                your client ID and client secret before closing.
+              </span>
+            </div>
+            <button
+              className="p-2 bg-blue-400"
+              onClick={() => setShowSecret(false)}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

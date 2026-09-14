@@ -17,6 +17,8 @@ func RouteAppsAPI(router *gin.RouterGroup) {
 	router.GET("/apps", getAllApps)
 	router.GET("/apps/:id", getApp)
 	router.POST("/apps", registerApp)
+	router.PATCH("/apps/:id", updateApp)
+	router.GET("/apps/:id/available-groups", getAppAvailableGroups)
 	router.POST("/apps/:id/groups", allowGroupsToApp)
 	router.DELETE("/apps/:id/groups", denyGroupsFromApp)
 	router.POST("/apps/:id/redirect-uris", addAppRedirectURI)
@@ -121,6 +123,76 @@ func registerApp(c *gin.Context) {
 
 	if errors.Is(err, models.ErrAppAlreadyExists) {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+}
+
+// PATCH /apps/:id
+func updateApp(c *gin.Context) {
+	appID, ok := parseAppID(c)
+	if !ok {
+		return
+	}
+
+	var req transport.UpdateAppRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	req.Name = strings.TrimSpace(req.Name)
+	req.LogoutNotificationURL = strings.TrimSpace(req.LogoutNotificationURL)
+	req.Status = strings.TrimSpace(req.Status)
+	if req.LaunchURL != nil {
+		launchURL := strings.TrimSpace(*req.LaunchURL)
+		if launchURL == "" {
+			req.LaunchURL = nil
+		} else {
+			req.LaunchURL = &launchURL
+		}
+	}
+
+	if req.Name == "" || req.LogoutNotificationURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name and logout_notification_url are required"})
+		return
+	}
+
+	if req.Status != "" && req.Status != "active" && req.Status != "inactive" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "status must be active or inactive"})
+		return
+	}
+
+	err := database.UpdateAppData(appID, req.Name, req.LaunchURL, req.LogoutNotificationURL, req.Status)
+	if err == nil {
+		c.JSON(http.StatusOK, req)
+		return
+	}
+
+	if errors.Is(err, models.ErrAppNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+}
+
+// GET /apps/:id/available-groups
+func getAppAvailableGroups(c *gin.Context) {
+	appID, ok := parseAppID(c)
+	if !ok {
+		return
+	}
+
+	groups, err := database.GetAppAvailableGroups(appID)
+	if err == nil {
+		c.JSON(http.StatusOK, groups)
+		return
+	}
+
+	if errors.Is(err, models.ErrAppNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 

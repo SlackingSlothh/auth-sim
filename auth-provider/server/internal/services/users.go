@@ -7,6 +7,7 @@ import (
 	"github.com/SlackingSlothh/auth-sim/auth-provider/server/internal/config"
 	"github.com/SlackingSlothh/auth-sim/auth-provider/server/internal/database"
 	"github.com/SlackingSlothh/auth-sim/auth-provider/server/internal/models"
+	"github.com/SlackingSlothh/auth-sim/auth-provider/server/transport"
 	"github.com/gin-gonic/gin"
 	"gorm.io/datatypes"
 )
@@ -76,14 +77,25 @@ func getUser(c *gin.Context) {
 
 // POST /users
 func registerUser(c *gin.Context) {
-	var newUser models.User
-	if err := c.ShouldBindJSON(&newUser); err != nil {
+	var request transport.RegisterUserRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newUser.Status = "active"
 
-	err := database.CreateUser(newUser)
+	passwordHash, err := config.HashPassword(request.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	newUser := models.User{
+		Name: request.Name,
+		Email: request.Email,
+		PasswordHash: passwordHash,
+		Status: "active",
+	}
+	
+	err = database.CreateUser(newUser)
 
 	if err == nil {
 		c.JSON(http.StatusCreated, newUser.Info())

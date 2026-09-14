@@ -243,6 +243,7 @@ func SelectApp(id datatypes.UUID) (transport.AppDetail, error) {
 	}
 
 	detail.App = transport.AppInfo{
+		ID:                    app.ID.String(),
 		Name:                  app.Name,
 		ClientID:              app.ClientID,
 		Status:                app.Status,
@@ -255,7 +256,7 @@ func SelectApp(id datatypes.UUID) (transport.AppDetail, error) {
 		Joins("JOIN application_group_policies ON application_group_policies.group_id = groups.id").
 		Where("application_group_policies.application_id = ?", app.ID).
 		Order("groups.name ASC").
-		Scan(&detail.AllowedGroups)
+		Scan(&detail.App.AllowedGroups)
 	if result.Error != nil {
 		return detail, models.ErrInternal
 	}
@@ -263,7 +264,7 @@ func SelectApp(id datatypes.UUID) (transport.AppDetail, error) {
 	result = db.Model(&models.ApplicationRedirectURI{}).
 		Where("application_id = ?", app.ClientID).
 		Order("redirect_uri ASC").
-		Pluck("redirect_uri", &detail.RedirectURIs)
+		Pluck("redirect_uri", &detail.App.RedirectURIs)
 	if result.Error != nil {
 		return detail, models.ErrInternal
 	}
@@ -290,15 +291,37 @@ func CreateApp(newApp models.Application) error {
 	return nil
 }
 
-func AppendAppGroups(appID datatypes.UUID, groupIDs []datatypes.UUID) ([]datatypes.UUID, error) {
+func UpdateAppData(appID datatypes.UUID, name string, launchURL *string, logoutNotificationURL string, status string) error {
 	db := config.GetDB()
 
-	if len(groupIDs) == 0 {
-		return []datatypes.UUID{}, nil
+	updates := map[string]interface{}{
+		"name":                    name,
+		"launch_url":              launchURL,
+		"logout_notification_url": logoutNotificationURL,
+	}
+	if status != "" {
+		updates["status"] = status
 	}
 
+	result := db.Model(&models.Application{}).
+		Where("id = ?", appID).
+		Updates(updates)
+
+	if result.Error != nil {
+		return models.ErrInternal
+	}
+	if result.RowsAffected == 0 {
+		return models.ErrAppNotFound
+	}
+
+	return nil
+}
+
+func GetAppAvailableGroups(appID datatypes.UUID) ([]transport.AppAllowedGroup, error) {
+	db := config.GetDB()
+
 	var app models.Application
-	result := db.Select("client_id").First(&app, "id = ?", appID)
+	result := db.Select("id").First(&app, "id = ?", appID)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			return nil, models.ErrAppNotFound
@@ -306,10 +329,31 @@ func AppendAppGroups(appID datatypes.UUID, groupIDs []datatypes.UUID) ([]datatyp
 		return nil, models.ErrInternal
 	}
 
+	var groups []transport.AppAllowedGroup
+	result = db.Table("groups").
+		Select("groups.id AS id, groups.name AS name").
+		Joins("LEFT JOIN application_group_policies ON application_group_policies.group_id = groups.id AND application_group_policies.application_id = ?", appID).
+		Where("application_group_policies.group_id IS NULL").
+		Order("groups.name ASC").
+		Scan(&groups)
+	if result.Error != nil {
+		return nil, models.ErrInternal
+	}
+
+	return groups, nil
+}
+
+func AppendAppGroups(appID datatypes.UUID, groupIDs []datatypes.UUID) ([]datatypes.UUID, error) {
+	db := config.GetDB()
+
+	if len(groupIDs) == 0 {
+		return []datatypes.UUID{}, nil
+	}
+
 	records := make([]models.ApplicationGroupPolicy, 0, len(groupIDs))
 	for _, groupID := range groupIDs {
 		records = append(records, models.ApplicationGroupPolicy{
-			ApplicationID: app.ID,
+			ApplicationID: appID,
 			GroupID:       groupID,
 			Effect:        "allow",
 		})
@@ -342,20 +386,11 @@ func RemoveAppGroups(appID datatypes.UUID, groupIDs []datatypes.UUID) ([]datatyp
 		return []datatypes.UUID{}, nil
 	}
 
-	var app models.Application
-	result := db.Select("client_id").First(&app, "id = ?", appID)
-	if result.Error != nil {
-		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, models.ErrAppNotFound
-		}
-		return nil, models.ErrInternal
-	}
+	delResult := db.Model(&models.ApplicationGroupPolicy{}).
+		Where("application_id = ? AND group_id IN ? AND effect = ?", appID, groupIDs, "allow").
+		Delete(&models.ApplicationGroupPolicy{})
 
-	err := db.Model(&models.ApplicationGroupPolicy{}).
-		Where("application_id = ? AND group_id IN ? AND effect = ?", app.ID, groupIDs, "allow").
-		Delete(&models.ApplicationGroupPolicy{}).Error
-
-	if err != nil {
+	if delResult.Error != nil {
 		return nil, models.ErrInternal
 	}
 

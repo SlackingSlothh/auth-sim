@@ -33,14 +33,14 @@ func getAllGroups(c *gin.Context) {
 		return
 	}
 
-	groupRecords := make([]transport.GroupRecord, len(groups))
+	AllGroupResponses := make([]transport.AllGroupResponse, len(groups))
 	for i, g := range groups {
-		groupRecords[i].ID = g.ID.String()
-		groupRecords[i].Name = g.Name
-		groupRecords[i].Description = g.Description
+		AllGroupResponses[i].ID = g.ID.String()
+		AllGroupResponses[i].Name = g.Name
+		AllGroupResponses[i].Description = g.Description
 	}
 
-	c.JSON(http.StatusOK, groupRecords)
+	c.JSON(http.StatusOK, AllGroupResponses)
 }
 
 // GET /groups/:id
@@ -66,26 +66,9 @@ func getGroup(c *gin.Context) {
 
 	group, apps, err := database.SelectGroup(uuid)
 	if err == nil {
-		brief := transport.GroupInfo{
-			ID: group.ID.String(),
-			Name: group.Name,
-			Description: group.Description,
-			CreatedAt: group.CreatedAt,
-			UpdatedAt: group.UpdatedAt,
-		}
-		userInfos := make([]member, len(group.Users))
-		for i, g := range group.Users {
-			userInfos[i].ID = g.ID.String()
-			userInfos[i].Name = g.Name
-			userInfos[i].Email = g.Email
-		}
-		appBriefs := make([]appBrief, len(apps))
-		for i, g := range apps {
-			appBriefs[i].ID = g.ID.String()
-			appBriefs[i].Name = g.Name
-			appBriefs[i].Status = g.Status
-		}
-		c.JSON(http.StatusOK, gin.H{"group": brief, "users": userInfos, "apps": appBriefs})
+		var response transport.GetGroupResponse
+		response.FromData(group, apps)
+		c.JSON(http.StatusOK, gin.H{"group": response.Info, "users": response.Members, "apps": response.AllowedApps})
 		return
 	}
 	
@@ -105,8 +88,12 @@ func createGroup(c *gin.Context) {
 	}
 
 	err := database.CreateGroup(newGroup)
-	var info transport.GroupInfo
-	info.InfoOf(newGroup)
+	var info transport.CreateGroupResponse
+	info.ID = newGroup.ID.String()
+	info.Name = newGroup.Name
+	info.Description = newGroup.Description
+	info.CreatedAt = newGroup.CreatedAt
+	info.UpdatedAt = newGroup.UpdatedAt
 
 	if err == nil {
 		c.JSON(http.StatusCreated, info)
@@ -125,16 +112,15 @@ func createGroup(c *gin.Context) {
 // PATCH /groups/:id
 func editGroup(c *gin.Context) {
 	id := c.Param("id")
-	var updatedInfo transport.GroupRecord
+	var updatedInfo transport.UpdateGroupRequest
 
-	updatedInfo.ID = id
 	if err := c.ShouldBindJSON(&updatedInfo); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var updatedGroup models.Group
-	if err := updatedGroup.ID.Scan(updatedInfo.ID); err != nil {
+	if err := updatedGroup.ID.Scan(id); err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": models.ErrGroupNotFound.Error()})
 		return
 	}

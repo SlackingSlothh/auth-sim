@@ -90,9 +90,13 @@ export default function UsersRoute() {
   async function handleCreate() {
     setFormError(null);
     if (!name.trim()) return setFormError("Name is required");
-    if (!email.includes("@")) return setFormError("Valid email is required");
-    if (password.length < 6)
-      return setFormError("Password must be at least 6 characters");
+    const emailRegex =
+      /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+    if (!emailRegex.test(email)) {
+      return setFormError("Valid email is required");
+    }
+    if (password.length < 8)
+      return setFormError("Password must be at least 8 characters");
 
     setSubmitting(true);
     try {
@@ -107,7 +111,6 @@ export default function UsersRoute() {
           resp && typeof resp === "string" ? resp : JSON.stringify(resp || {});
         setFormError(`Create failed: ${msg}`);
       } else {
-        // refetch fresh list after successful create
         closeNew();
         await fetchUsers();
       }

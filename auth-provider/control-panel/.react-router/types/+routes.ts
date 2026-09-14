@@ -36,12 +36,17 @@ type Pages = {
   "/apps": {
     params: {};
   };
+  "/apps/:id": {
+    params: {
+      "id": string;
+    };
+  };
 };
 
 type RouteFiles = {
   "root.tsx": {
     id: "root";
-    page: "/" | "/login" | "/groups" | "/groups/:id" | "/users" | "/users/:id" | "/apps";
+    page: "/" | "/login" | "/groups" | "/groups/:id" | "/users" | "/users/:id" | "/apps" | "/apps/:id";
   };
   "routes/login.tsx": {
     id: "routes/login";
@@ -49,11 +54,7 @@ type RouteFiles = {
   };
   "routes/_app.tsx": {
     id: "routes/_app";
-    page: "/" | "/groups" | "/groups/:id" | "/users" | "/users/:id" | "/apps";
-  };
-  "routes/_app._index.tsx": {
-    id: "routes/_app._index";
-    page: "/";
+    page: "/groups" | "/groups/:id" | "/" | "/users" | "/users/:id" | "/apps" | "/apps/:id";
   };
   "routes/_app.groups.tsx": {
     id: "routes/_app.groups";
@@ -66,6 +67,10 @@ type RouteFiles = {
   "routes/_app.groups.$id.tsx": {
     id: "routes/_app.groups.$id";
     page: "/groups/:id";
+  };
+  "routes/_app._index.tsx": {
+    id: "routes/_app._index";
+    page: "/";
   };
   "routes/_app.users.tsx": {
     id: "routes/_app.users";
@@ -81,11 +86,15 @@ type RouteFiles = {
   };
   "routes/_app.apps.tsx": {
     id: "routes/_app.apps";
-    page: "/apps";
+    page: "/apps" | "/apps/:id";
   };
   "routes/_app.apps._index.tsx": {
     id: "routes/_app.apps._index";
     page: "/apps";
+  };
+  "routes/_app.apps.$id.tsx": {
+    id: "routes/_app.apps.$id";
+    page: "/apps/:id";
   };
 };
 
@@ -93,13 +102,14 @@ type RouteModules = {
   "root": typeof import("./app/root.tsx");
   "routes/login": typeof import("./app/routes/login.tsx");
   "routes/_app": typeof import("./app/routes/_app.tsx");
-  "routes/_app._index": typeof import("./app/routes/_app._index.tsx");
   "routes/_app.groups": typeof import("./app/routes/_app.groups.tsx");
   "routes/_app.groups._index": typeof import("./app/routes/_app.groups._index.tsx");
   "routes/_app.groups.$id": typeof import("./app/routes/_app.groups.$id.tsx");
+  "routes/_app._index": typeof import("./app/routes/_app._index.tsx");
   "routes/_app.users": typeof import("./app/routes/_app.users.tsx");
   "routes/_app.users._index": typeof import("./app/routes/_app.users._index.tsx");
   "routes/_app.users.$id": typeof import("./app/routes/_app.users.$id.tsx");
   "routes/_app.apps": typeof import("./app/routes/_app.apps.tsx");
   "routes/_app.apps._index": typeof import("./app/routes/_app.apps._index.tsx");
+  "routes/_app.apps.$id": typeof import("./app/routes/_app.apps.$id.tsx");
 };

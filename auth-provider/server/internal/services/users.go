@@ -225,11 +225,7 @@ func changePassword(c *gin.Context) {
 		return
 	}
 
-	type passwordRequest struct {
-		Password string
-	}
-
-	var req passwordRequest
+	var req transport.ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

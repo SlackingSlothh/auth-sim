@@ -32,3 +32,12 @@ type EditRedirectURIRequest struct {
 	OldRedirectURI string `json:"oldRedirectUri"`
 	NewRedirectURI string `json:"newRedirectUri"`
 }
+
+type LoginRequest struct {
+	Email    string
+	Password string
+}
+
+type ChangePasswordRequest struct {
+	Password string
+}

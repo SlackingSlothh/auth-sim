@@ -7,23 +7,19 @@ import (
 	"github.com/SlackingSlothh/auth-sim/auth-provider/server/internal/config"
 	"github.com/SlackingSlothh/auth-sim/auth-provider/server/internal/database"
 	"github.com/SlackingSlothh/auth-sim/auth-provider/server/internal/models"
+	"github.com/SlackingSlothh/auth-sim/auth-provider/server/transport"
 	"github.com/gin-gonic/gin"
 )
 
-type loginCredential struct {
-	email string
-	password string
-}
-
 // POST /login
 func AdminLogin(c *gin.Context) {
-	var credential loginCredential
+	var credential transport.LoginRequest
 	if err := c.ShouldBindJSON(&credential); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	userFound, err := database.SelectUserByEmail(credential.email)
+	userFound, err := database.SelectUserByEmail(credential.Email)
 	
 	if err != nil {
 		if errors.Is(err, models.ErrUserNotFound) {
@@ -34,7 +30,7 @@ func AdminLogin(c *gin.Context) {
 		return
 	}
 
-	if config.IsPasswordMatch(credential.password, userFound.PasswordHash) {
+	if config.IsPasswordMatch(credential.Password, userFound.PasswordHash) {
 		c.JSON(http.StatusOK, gin.H{"user": userFound})
 		return
 	}

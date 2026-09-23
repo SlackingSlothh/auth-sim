@@ -52,18 +52,6 @@ func getGroup(c *gin.Context) {
 		return
 	}
 
-	type member struct {
-		ID string
-		Name string
-		Email string
-	}
-
-	type appBrief struct {
-		ID string
-		Name string
-		Status string
-	}
-
 	group, apps, err := database.SelectGroup(uuid)
 	if err == nil {
 		var response transport.GetGroupResponse

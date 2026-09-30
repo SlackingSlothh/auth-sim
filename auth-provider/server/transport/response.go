@@ -110,3 +110,51 @@ type AppInfo struct {
 	RedirectURIs          []string          `json:"redirect_uris"`
 	AllowedGroups         []AppAllowedGroup `json:"allowed_groups"`
 }
+
+type userInfo struct {
+	ID           string
+	Name         string
+	Email        string
+	Status       string
+}
+
+type groupBrief struct {
+	ID 		string
+	Name 	string
+}
+
+type GetUserResponse struct {
+	Info 	userInfo		`json:"user"`
+	Groups 	[]groupBrief	`json:"groups"`
+}
+
+func (r *GetUserResponse) FromData(u models.User) {
+	r.Info.ID = u.ID.String()
+	r.Info.Name = u.Name
+	r.Info.Email = u.Email
+	r.Info.Status = u.Status
+	r.Groups = make([]groupBrief, len(u.Groups))
+	for i, g := range u.Groups {
+		r.Groups[i].ID = g.ID.String()
+		r.Groups[i].Name = g.Name
+	}
+}
+
+type RegisterUserResponse struct {
+	ID           string
+	Name         string
+	Email        string
+	Status       string
+}
+
+type AllUsersResponse struct {
+	ID           string
+	Name         string
+	Email        string
+	Status       string
+}
+
+type AvailableGroupsResponse struct {
+	ID string
+	Name string
+}

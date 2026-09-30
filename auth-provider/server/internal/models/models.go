@@ -176,39 +176,3 @@ type AuditLog struct {
 func (AuditLog) TableName() string {
 	return "audit_logs"
 }
-
-// =======================================================================
-
-type UserInfo struct {
-	ID           string
-	Name         string
-	Email        string
-	Status       string
-}
-
-func (this User) Info() UserInfo {
-	return UserInfo{
-		ID: this.ID.String(),
-		Name: this.Name,
-		Email: this.Email,
-		Status: this.Status,
-	}
-}
-
-func (this *User) FromInfo(info UserInfo) {
-	this.ID.Scan(info.ID)
-	if info.Email != "" {
-		this.Email = info.Email
-	}
-	if info.Name != "" {
-		this.Name = info.Name
-	}
-	if info.Status != "" {
-		this.Status = info.Status
-	}
-}
-
-type GroupBrief struct {
-	ID string
-	Name string
-}

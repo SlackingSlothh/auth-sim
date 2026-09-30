@@ -174,7 +174,7 @@ func IsAllowedOrigin(origin string) bool {
 	return err == nil
 }
 
-func GetAvailableGroups(userID datatypes.UUID) ([]models.GroupBrief, error) {
+func GetAvailableGroups(userID datatypes.UUID) ([]transport.AvailableGroupsResponse, error) {
 	db := config.GetDB()
 
 	var user models.User
@@ -186,7 +186,7 @@ func GetAvailableGroups(userID datatypes.UUID) ([]models.GroupBrief, error) {
 		return nil, models.ErrInternal
 	}
 
-	var groups []models.GroupBrief
+	var groups []transport.AvailableGroupsResponse
 	result = db.Table("groups").
 		Select("groups.id AS id, groups.name AS name").
 		Joins("LEFT JOIN user_groups ON user_groups.group_id = groups.id AND user_groups.user_id = ?", userID).

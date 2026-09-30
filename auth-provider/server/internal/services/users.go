@@ -32,15 +32,15 @@ func getAllUsers(c *gin.Context) {
 		return
 	}
 
-	usersInfo := make([]models.UserInfo, len(users))
+	response := make([]transport.AllUsersResponse, len(users))
 	for i, u := range users {
-		usersInfo[i].ID = u.ID.String()
-		usersInfo[i].Email = u.Email
-		usersInfo[i].Name = u.Name
-		usersInfo[i].Status = u.Status
+		response[i].ID = u.ID.String()
+		response[i].Email = u.Email
+		response[i].Name = u.Name
+		response[i].Status = u.Status
 	}
 
-	c.JSON(http.StatusOK, usersInfo)
+	c.JSON(http.StatusOK, response)
 }
 
 // GET /users/:id
@@ -54,12 +54,9 @@ func getUser(c *gin.Context) {
 
 	user, err := database.SelectUser(uuid)
 	if err == nil {
-		groupBriefs := make([]models.GroupBrief, len(user.Groups))
-		for i, g := range user.Groups {
-			groupBriefs[i].ID = g.ID.String()
-			groupBriefs[i].Name = g.Name
-		}
-		c.JSON(http.StatusOK, gin.H{"user": user.Info(), "groups": groupBriefs})
+		var response transport.GetUserResponse
+		response.FromData(user)
+		c.JSON(http.StatusOK, response)
 		return
 	}
 	
@@ -98,7 +95,12 @@ func registerUser(c *gin.Context) {
 	err = database.CreateUser(newUser)
 
 	if err == nil {
-		c.JSON(http.StatusCreated, newUser.Info())
+		var response transport.RegisterUserResponse
+		response.ID = newUser.ID.String()
+		response.Email = newUser.Email
+		response.Name = newUser.Name
+		response.Status = newUser.Status
+		c.JSON(http.StatusCreated, response)
 		return
 	}
 
@@ -113,16 +115,24 @@ func registerUser(c *gin.Context) {
 // PATCH /users/:id
 func updateUser(c *gin.Context) {
 	id := c.Param("id")
-	var updatedInfo models.UserInfo
+	var updatedInfo transport.UpdateUserRequest
 
-	updatedInfo.ID = id
 	if err := c.ShouldBindJSON(&updatedInfo); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var updatedUser models.User
-	updatedUser.FromInfo(updatedInfo)
+	if err := updatedUser.ID.Scan(id); err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+	if updatedInfo.Name != "" {
+		updatedUser.Name = updatedInfo.Name
+	}
+	if updatedInfo.Status != "" {
+		updatedUser.Status = updatedInfo.Status
+	}
 	err := database.UpdateUserData(updatedUser)
 
 	if err == nil {

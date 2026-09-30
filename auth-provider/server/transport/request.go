@@ -6,6 +6,11 @@ type RegisterUserRequest struct {
 	Password string
 }
 
+type UpdateUserRequest struct {
+	Name   string
+	Status string
+}
+
 type UpdateGroupRequest struct {
 	Name        string
 	Description string
